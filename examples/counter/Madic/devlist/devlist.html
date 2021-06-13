@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>药柜管理</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- core css -->
+    <link rel="stylesheet" href="./lc_switch.css">
+    <link rel="stylesheet" href="./init.css">
+    <script src="../comment.js"></script>
+    <script src="../js/jquery.min.js"></script>
+    <!-- core library -->
+    <script src="./lc_switch.min.js"></script>
+    <link rel="stylesheet" href="../alert.css"  type="text/css" />
+<script>
+    $(document).ready(function(){
+
+        //var param = window.location.search;//获取当前页面URL信息
+        initLoad();
+        $('.lcs_check').lc_switch();
+        //HollyProxy.HomePage.prototype.search(view,startDate,endDate,'${ctx}');
+
+    });
+    function initLoad() {
+        $.ajax({
+            //几个参数需要注意一下
+            type: "GET",//方法类型
+            dataType: "json",//预期服务器返回的数据类型
+            url: MyServer + "devList/getDevList",//url
+            headers: {
+                "Authorization": sessionStorage.getItem("Authorization"),
+            },
+            success: function (result) {
+                console.log(result);
+                if (result.code === 200) {
+                    var list = result.data.length;
+                    var node = [];
+                    var head;
+                    var btns = $("#btn").clone();
+                    var alert = $("#alert").clone();
+                    for(var i = 0 ; i< list;i++){
+                        if(result.data[i].devinfo === ''){
+                            continue;
+                        }
+                        var lab = result.data[i].devinfo.lab;
+                        if(lab.length > 10){
+                            lab = lab.substring(0,10);
+                        }
+                        var tt = $("#11").clone();
+
+                        tt.children().eq(3).find('input').val(result.data[i].devinfo.id);
+                        tt.children().eq(3).attr("onclick","onlyThis(this)");
+                        tt.attr("id",result.data[i].devinfo.id);
+                        tt.children().eq(0).text(lab);
+                        tt.children().eq(1).text("ip:"+result.data[i].devinfo.ip);
+                        if(result.data[i].inuse === "1"){
+                            tt.children().eq(2).text("正在使用");
+                            tt.children().eq(3).find('input').attr("pp","1");
+                            tt.children().eq(3).find('input').lcs_on();
+                            head = tt;
+                        }else {
+                            tt.children().eq(2).text("");
+                            tt.children().eq(3).find('input').attr("pp","0");
+                            tt.children().eq(3).find('input').lcs_off();
+                            node.push(tt);
+                        }
+                    }
+                    $("#bodys").html("");
+                    $("#bodys").append(alert);
+                    $("#bodys").append(head);
+                    for (var j = 0;j<list;j++){
+                        $("#bodys").append(node[j]);
+                    }
+                    $("#bodys").append(btns);
+                } else if (result.code === 8001 || result.code === 4500) {
+                    $('.alert').html("您未登陆").addClass('alert-danger').show().delay(2500).fadeOut();
+                } else if (result.code === 405) {
+                    $('.alert').html("没有访问权限").addClass('alert-danger').show().delay(2500).fadeOut();
+                } else {
+                    $('.alert').html(result.message).addClass('alert-danger').show().delay(2500).fadeOut();
+                }
+            },
+            error: function () {
+                $('#inputs').html("服务器开小差了！").addClass('alert-danger').show().delay(2500).fadeOut();
+            }
+        });
+    }
+    function clicks(){
+        // 获取选中的值
+        var checkids = [];
+        $('[name=dept]:checked').each(function(item){
+            console.log(this.attributes.pp.value)
+            if(this.attributes.pp.value === "0"){
+                checkids.push( $(this).val())
+            }
+        })
+        //window.location.reload();
+        if(checkids.length === 1){
+            update(checkids[0])
+        }else {
+            $('.alert').html("无效操作").addClass('alert-danger').show().delay(2500).fadeOut();
+        }
+        // 更新正在使用的药柜设备
+    }
+    function onlyThis(obj) {
+        $('[name=dept]:checked').each(function(item){
+            $(this).lcs_off();
+        })
+        //console.log(obj)
+        $(obj).lcs_on();
+    }
+    function update(id) {
+        $.ajax({
+            //几个参数需要注意一下
+            type: "GET",//方法类型
+            dataType: "json",//预期服务器返回的数据类型
+            url: MyServer + "devList/updateInUse/"+id,//url
+            headers: {
+                "Authorization": sessionStorage.getItem("Authorization"),
+            },
+            success: function (result) {
+                if (result.code === 200) {
+                    if(result.data){
+                        window.location.reload();
+                    }else {
+                        $('.alert').html("更新失败").addClass('alert-danger').show().delay(2500).fadeOut();
+                    }
+                } else if (result.code === 8001 || result.code === 4500) {
+                    $('.alert').html("您未登陆").addClass('alert-danger').show().delay(2500).fadeOut();
+                } else if (result.code === 405) {
+                    $('.alert').html("没有访问权限").addClass('alert-danger').show().delay(2500).fadeOut();
+                } else {
+                    $('.alert').html(result.message).addClass('alert-danger').show().delay(2500).fadeOut();
+                }
+            },
+            error: function () {
+                $('.alert').html("服务器开小差了！").addClass('alert-danger').show().delay(2500).fadeOut();
+            }
+        });
+    }
+    function cancel() {
+        $('.alert').hide();
+        $("#insert").text("新增");
+        $("#insert").attr("onclick","insert()");
+        $("#insert").css("background-color","#02a40d")
+    }
+    function insert() {
+        $("#insert").text("取消");
+        $("#insert").attr("onclick","cancel()");
+        $("#insert").css("background-color","#636d69")
+        $('.alert').html('<input class="alert2" id="inputs" style="z-index:99999;position: fixed;"/>' +
+            '<button type="button" class="save2" style="float:right;background-color: #02a40d; color: #FFF;" onclick="add()">添加</button>')
+            .addClass('alert-danger').show();
+    }
+    function add() {
+        if($("#inputs").val() === ""){
+            alert("请填写设备IMEI号")
+        }else {
+            $(".save2").removeAttr("onclick");
+            insertData($("#inputs").val())
+        }
+    }
+    function insertData(obj) {
+        $.ajax({
+            //几个参数需要注意一下
+            type: "GET",//方法类型
+            dataType: "json",//预期服务器返回的数据类型
+            url: MyServer + "devList/insert/"+obj,//url
+            headers: {
+                "Authorization": sessionStorage.getItem("Authorization"),
+            },
+            success: function (result) {
+                console.log(result);
+                if (result.code === 200) {
+                    if(result.data){
+                        window.location.reload();
+                    }else {
+                        alert(result.message)
+                    }
+                } else if (result.code === 8001 || result.code === 4500) {
+                    $('.alert').html("您未登陆").addClass('alert-warning').show().delay(2500).fadeOut();
+                } else if (result.code === 405) {
+                    $('.alert').html("没有访问权限").addClass('alert-warning').show().delay(2500).fadeOut();
+                } else {
+                    $('.alert').html(result.message).addClass('alert-danger').show().delay(2500).fadeOut();
+                }
+                $(".save2").attr("onclick","add()");
+            },
+            error: function (result) {
+                if(result.status === 424 && result.responseText.substring(10,13) === "599"){
+
+                    $('.alert').hide();
+                    $("#insert").text("新增");
+                    $("#insert").attr("onclick","insert()");
+                    $("#insert").css("background-color","#02a40d")
+                    $('.alert').html("该设备已添加").addClass('alert-warning').show().delay(2500).fadeOut();
+                }else {
+                    $('.alert').html("服务器开小差了！").addClass('alert-danger').show().delay(2500).fadeOut();
+                }
+
+            }
+        });
+    }
+</script>
+</head>
+<body  id = "bodys">
+    <div class="inner-input" id = "11" hidden>
+        <label class="fixed-w" style="width: 8em;"></label>
+        <text  style="font-size: 1px;margin-left: -20px;color: #636d69"></text>
+        <text  style="font-size: 1px;margin-left: 20px;color: #5ee23e" class="inuse"></text>
+        <div class="to_chose">
+            <input type="checkbox" class="lcs_check" pp="0"  name="dept" value="20"  autocomplete="off" />
+        </div>
+    </div>
+    <div class="alert" id="alert" style="z-index:99999;position: fixed;"></div>
+
+    <div class="btn" id="btn">
+        <button type="button" class="save" id="insert" style="float:left;background-color: #02a40d; color: #FFF;" onclick="insert()">新增</button>
+        <button type="button" class="save" style="float: right;background-color: #EC8336; color: #FFF;" onclick="clicks()">修改</button>
+    </div>
+
+</body>
+</html>

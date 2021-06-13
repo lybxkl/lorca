@@ -3,6 +3,8 @@ package main
 import (
 	"embed"
 	"fmt"
+	"github.com/lxn/win"
+	"github.com/zserge/lorca"
 	"log"
 	"net"
 	"net/http"
@@ -10,11 +12,9 @@ import (
 	"os/signal"
 	"runtime"
 	"sync"
-
-	"github.com/zserge/lorca"
 )
 
-//go:embed www
+//go:embed websocket
 var fs embed.FS
 
 // Go types that are bound to the UI must be thread-safe, because each binding
@@ -38,11 +38,14 @@ func (c *counter) Value() int {
 }
 
 func main() {
+	width := int(win.GetSystemMetrics(win.SM_CXSCREEN))
+	height := int(win.GetSystemMetrics(win.SM_CYSCREEN))
+	fmt.Printf("%dx%d\n", width, height)
 	args := []string{}
 	if runtime.GOOS == "linux" {
 		args = append(args, "--class=Lorca")
 	}
-	ui, err := lorca.New("", "", 480, 320, args...)
+	ui, err := lorca.New("", "", width*3/5, height-50, args...)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -68,7 +71,7 @@ func main() {
 	}
 	defer ln.Close()
 	go http.Serve(ln, http.FileServer(http.FS(fs)))
-	ui.Load(fmt.Sprintf("http://%s/www", ln.Addr()))
+	ui.Load(fmt.Sprintf("http://%s/websocket", ln.Addr()))
 
 	// You may use console.log to debug your JS code, it will be printed via
 	// log.Println(). Also exceptions are printed in a similar manner.
